@@ -5,7 +5,7 @@ a=$(readlink -f $0)
 b=$(dirname $a)
 
 # Must cd to load the jcshell.rc file
-# cd $b
+cd $b
 
 neededjars=$(find jars -type f -exec echo $b/{} \; | tr '\n' ':')
 
