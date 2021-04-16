@@ -1,0 +1,282 @@
+# > 3 +trace.log
+
+/mode echo=on trace=on verbose=on debug=on
+/terminal
+/atr
+_set_vars
+
+DEFUN m_SELECT_APPLICATION GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 3 bytes app id"
+        return
+    end
+    /set-var app_id ${argv[0]}
+	/send 905A0000#(${app_id})00
+	# GET_KEY_SETTINGS
+	/send 9045000000
+END
+
+DEFUN m_GET_KEY_SETTINGS GLOBAL
+
+	#/send 9045000000 ???
+END
+
+DEFUN m_GET_APPLICATION_IDS GLOBAL
+	/send 906A000000
+    #m_SELECT_APPLICATION 000000
+END
+
+DEFUN m_CREATE_APPLICATION GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 3 bytes app id"
+        return
+    end
+    /set-var app_id ${argv[0]}
+	/send 90CA0000#(${app_id}0F0E)00
+END
+
+DEFUN m_CREATE_FILE GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 1 byte file_no"
+        return
+    end
+    /set-var file_no ${argv[0]}
+	/send 90CD0000#(${file_no}00EEEE0A0000)00
+END
+
+DEFUN m_GET_FILE_SETTINGS GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 1 byte fileno"
+        return
+    end
+    /set-var fileno ${argv[0]}
+	/send 90F5000001${fileno}00
+END
+
+DEFUN m_GET_FILE_IDS GLOBAL
+	/send 906F000000
+END
+
+DEFUN more GLOBAL
+	/send 90AF000000
+END
+
+DEFUN m_READ_DATA GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 1 byte fileno"
+        return
+    end
+    /set-var fileno ${argv[0]}
+	/send 90BD0000#(${fileno}000000000000)00
+END
+
+DEFUN m_WRITE_DATA GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify 1 byte fileno"
+        return
+    end
+    /set-var fileno ${argv[0]}
+	/send 903D0000#(${fileno}000000040000BABEFACE)00
+END
+
+DEFUN steps GLOBAL
+    /card
+    init-update 
+    ext-auth enc
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/tools.cap
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/auth.cap
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/sam.cap
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/datastorage.cap
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/sign.cap
+    cap_install auth
+    cap_install sam
+    cap_install datastorage
+    cap_install sign
+END
+
+DEFUN jcop GLOBAL
+    /card
+    dks 3 CAFEBABE0102030405060708090A0B0C
+    init-update
+    ext-auth mac
+END
+
+# /select        F76964706173730101000101
+# 00A40400 0C F76964706173730101000101     00
+
+##########################################################
+# tools package aid         = F769647061737300
+# auth package aid          = F769647061737301 
+# sam package aid           = F769647061737302
+# datastorage package aid   = F769647061737303
+# sign package aid          = F769647061737304
+
+# datastorageInstanceAID    = F76964706173730301000101
+# datastorageInstallParams  = 9C
+# datastorageAppletAID      = F769647061737303010001
+
+# authInstanceAID           = F76964706173730101000101
+# authInstallParams         = 03019C
+# authAppletAID             = F769647061737301010001 
+
+# samInstanceAID            = F76964706173730201000101
+# samInstallParams          = 9C
+# samAppletAID              = F769647061737302010001
+
+# signInstanceAID            = F76964706173730401000101
+# signInstallParams          = 9C
+# signAppletAID              = F769647061737304010001
+#########################################################
+
+DEFUN reload GLOBAL
+    cap_upload caps/dx.cap
+    install -i C0FFEE0102030405 -q C900 CAFEBABE42 CAFEBABE4201
+    /select C0FFEE0102030405
+END
+
+DEFUN clean GLOBAL
+    /card
+    dks 3 CAFEBABE0102030405060708090A0B0C
+    init-update
+    ext-auth mac
+    delete -r CAFEBABE42
+END
+
+# declare key set
+DEFUN dks GLOBAL
+/mode echo=off trace=off verbose=off debug=off
+    if ${argv[*];l} != 2
+        /echo "Please specify KEYSET"
+        return
+    end
+
+    /set-var _ks ${argv[0]}
+    /set-var k ${argv[1]}
+
+    if ${k;l} != 32
+        /echo "Invalid key length"
+        return
+    end
+    
+    try
+        set-key ${_ks}/1/DES-ECB/${k} ${_ks}/2/DES-ECB/${k} ${_ks}/3/DES-ECB/${k}
+        /set-var -g ks ${_ks}
+    catch 1
+        /echo "Requires: /card"
+    end
+/mode echo=on trace=on verbose=on debug=on
+END
+
+DEFUN upload_decode GLOBAL
+    /card
+    # dks 3 CAFEBABE0102030405060708090A0B0C
+    init-update
+    ext-auth mac
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/decode.cap
+END
+
+DEFUN upload_sign GLOBAL
+    /card
+    # dks 3 CAFEBABE0102030405060708090A0B0C
+    init-update
+    ext-auth mac
+    upload -b 248 /home/pi/smartcard/mutrust/cardapplets/build/javacard/sign.cap
+END
+
+DEFUN cap_upload GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify ABSOLUTE PATH to cap file"
+        return
+    end
+    /set-var applet_cap ${argv[0]}
+    upload -b 248 ${applet_cap}
+END
+
+DEFUN access GLOBAL
+    /card
+    dks 3 CAFEBABE0102030405060708090A0B0C
+    init-update 3
+    ext-auth mac
+END
+
+DEFUN cap_install GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify cap"
+        return
+    end
+    /card
+    #dks 3 CAFEBABE0102030405060708090A0B0C
+    #dks 1 404142434445464748494a4b4c4d4e4F
+    init-update 
+    ext-auth mac
+    /set-var applet_cap ${argv[0]}
+
+    if ${applet_cap} == 'auth'
+        /set-var instanceAID    F76964706173730101000101
+        /set-var installParams  03019C
+        /set-var packageAID     F769647061737301 
+        /set-var appletAID      F769647061737301010001
+    end
+
+    if ${applet_cap} == 'sam'
+        /set-var instanceAID    F76964706173730201000101
+        /set-var installParams  9C
+        /set-var packageAID     F769647061737302
+        /set-var appletAID      F769647061737302010001
+    end
+
+    if ${applet_cap} == 'datastorage'
+        /set-var instanceAID    F76964706173730301000101
+        /set-var installParams  9C
+        /set-var packageAID     F769647061737303
+        /set-var appletAID      F769647061737303010001
+    end
+
+    if ${applet_cap} == 'decode'
+        /set-var instanceAID    DEC0DE00000101
+        /set-var installParams  9C
+        /set-var packageAID     DEC0DE0000
+        /set-var appletAID      DEC0DE000001
+    end
+
+    if ${applet_cap} == 'sign'
+        /set-var instanceAID    F76964706173730401000101 
+        /set-var installParams  9C
+        /set-var packageAID     F769647061737304 
+        /set-var appletAID      F769647061737304010001
+    end
+
+    install -i ${instanceAID} -q C9#(${installParams}) ${packageAID} ${appletAID}
+END
+
+DEFUN cap_delete GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please specify cap"
+        return
+    end
+    try
+        /set-var applet_cap ${argv[0]}
+
+        if ${applet_cap} == 'tools'
+            /set-var packageaid F769647061737300
+        end
+
+        if ${applet_cap} == 'auth'
+            /set-var packageaid F769647061737301 
+        end
+
+        if ${applet_cap} == 'sam'
+            /set-var packageaid F769647061737302
+        end
+
+        if ${applet_cap} == 'datastorage'
+            /set-var packageaid F769647061737303
+        end
+
+        delete -r ${packageaid}
+
+    catch 1
+        /echo Result: ${response;s0,$(/expr ${response;l} - 4)}
+    end
+END
+
