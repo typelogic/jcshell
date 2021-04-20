@@ -1,0 +1,28 @@
+/mode echo=on trace=on verbose=on debug=on
+/terminal
+
+DEFUN CreateApplication GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please supply appid and keysettings"
+        return
+    end
+    /send 90CA0000#(${argv[0]})00
+END
+
+DEFUN GetApplicationIDs GLOBAL
+    /send 906A000000
+END
+
+DEFUN SelectApplication GLOBAL
+    if ${argv[*];l} == 0
+        /echo "Please supply AID"
+        return
+    end
+    /send 905A0000#(${argv[0]})00
+END
+
+# TODO
+DEFUN FormatPICC GLOBAL
+    # requires authentication to PICC masterkey
+    #/send 90FC000000
+END

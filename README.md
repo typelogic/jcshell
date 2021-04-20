@@ -17,3 +17,14 @@ Launch interactive shell with custom functions folder:
 
 The presence of `jcshell.rc` in the custom functions folder allows for
 further customizations.
+
+# Mifare DESFire EV2
+
+```sh
+./jcshell.sh scripts/desfire/
+/atr
+GetApplicationIDs
+CreateApplication 0102030F0E
+GetApplicationIDs
+SelectApplication 010203
+```
